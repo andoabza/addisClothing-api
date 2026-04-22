@@ -31,7 +31,7 @@ router.get('/recently-viewed', protect, async (req, res) => {
 router.get('/profile', protect, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user.id !== parseInt(req.params.id)) return res.status(403).json({ message: 'Forbidden' });
+    // if (req.user.id !== parseInt(req.params.id)) return res.status(403).json({ message: 'Forbidden' });
 
     const [rows] = await pool.query(
       'SELECT id, name, email, phone, role, created_at FROM users WHERE id = ?',

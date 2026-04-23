@@ -5,7 +5,7 @@ import PDFDocument from 'pdfkit';
 import { uploadToCloudinary } from '../middleware/upload.js';
 import upload from '../middleware/upload.js';
 import QRCode from 'qrcode';
-import { sendProductToTelegram } from '../services/telegram.js';
+// import { sendProductToTelegram } from '../services/telegram.js';
 import { notifyVariantAdded, notifyAdminLowStock } from '../services/telegram.js';
 
 const router = express.Router();

@@ -72,12 +72,12 @@ export async function notifyVariantAdded(product, variant, allVariants, action =
   if (!BOT_TOKEN || !CHANNEL_ID) return false;
 
   const productUrl = getProductLink(product?.id);
-  const title = action === 'added' ? '🆕 *New Variant Added!*' : '🔄 *Variant Updated*';
+  const title = action === 'added' ? '🆕 *New!*' : '🔄 *Updated*';
   const variantLine = `• *${variant.size}* / ${variant.color} — stock: ${variant.stock}` +
     (variant.price_adjustment ? ` (${variant.price_adjustment > 0 ? '+' : ''}${variant.price_adjustment} ETB)` : '');
 
   const message = `${title}\n\n` +
-    `*📦 Product:* [${product.name}](${productUrl})\n` +
+    `*📦 Name:* [${product.name}](${productUrl})\n` +
     `*💰 Base price:* ETB ${product.base_price}\n` +
     `*🏷️ Category:* ${product.category_name || 'N/A'}\n\n` +
     `*✨ ${action === 'added' ? 'New' : 'Updated'} variant:*\n${variantLine}\n\n` +
@@ -111,22 +111,22 @@ export async function notifyAdminLowStock(product, variant) {
   }
 }
 
-// ----- 3. Notify channel when a product is first created (without variants) -----
-export const sendProductToTelegram = async (product, action = 'created') => {
-  if (!BOT_TOKEN || !CHANNEL_ID) return false;
+// // ----- 3. Notify channel when a product is first created (without variants) -----
+// export const sendProductToTelegram = async (product, action = 'created') => {
+//   if (!BOT_TOKEN || !CHANNEL_ID) return false;
 
-  const productUrl = getProductLink(product.id);
-  const message = `🆕 * ${product.name}!*\n\n` +
-    `*📦 Name:* [${product.name}](${productUrl})\n` +
-    `*💰 Price:* ETB ${product.base_price}\n` +
-    `*🏷️ Category:* ${product.category_name || 'N/A'}\n` +
-    `*📝 Description:* ${product.description || 'No description'}\n` +
-    `*⭐ Featured:* ${product.is_featured ? 'Yes' : 'No'}\n\n` +
-    `${productUrl}`;
+//   const productUrl = getProductLink(product.id);
+//   const message = `🆕 * ${product.name}!*\n\n` +
+//     `*📦 Name:* [${product.name}](${productUrl})\n` +
+//     `*💰 Price:* ETB ${product.base_price}\n` +
+//     `*🏷️ Category:* ${product.category_name || 'N/A'}\n` +
+//     `*📝 Description:* ${product.description || 'No description'}\n` +
+//     `*⭐ Featured:* ${product.is_featured ? 'Yes' : 'No'}\n\n` +
+//     `${productUrl}`;
 
-  if (product.image_url) {
-    return await sendPhoto(CHANNEL_ID, product.image_url, message, 'Markdown');
-  } else {
-    return await sendMessage(CHANNEL_ID, message, 'Markdown');
-  }
-};
+//   if (product.image_url) {
+//     return await sendPhoto(CHANNEL_ID, product.image_url, message, 'Markdown');
+//   } else {
+//     return await sendMessage(CHANNEL_ID, message, 'Markdown');
+//   }
+// };

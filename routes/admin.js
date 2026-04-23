@@ -286,14 +286,14 @@ router.post('/products', async (req, res) => {
   // Log the creation
 
   await logProductChange(result.insertId, 'create', req.body, req.user.id);
-  await sendProductToTelegram({
-    name,
-    base_price,
-    category_id,
-    description,
-    is_featured,
-    image_url
-  }, 'created').catch(err => console.error('Telegram error:', err));
+  // await sendProductToTelegram({
+  //   name,
+  //   base_price,
+  //   category_id,
+  //   description,
+  //   is_featured,
+  //   image_url
+  // }, 'created').catch(err => console.error('Telegram error:', err));
   
   res.status(201).json({ id: result.insertId });
 });

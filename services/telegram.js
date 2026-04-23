@@ -51,7 +51,7 @@ async function sendPhoto(chatId, photoUrl, caption, parseMode = 'Markdown') {
 
 // Generate clickable product link
 function getProductLink(productId) {
-  return `${FRONTEND_URL}/product/${productId}`;
+  return `${FRONTEND_URL}product/${productId}`;
 }
 
 // Format variant list as Markdown
@@ -71,7 +71,7 @@ function formatVariantsMarkdown(variants) {
 export async function notifyVariantAdded(product, variant, allVariants, action = 'added') {
   if (!BOT_TOKEN || !CHANNEL_ID) return false;
 
-  const productUrl = getProductLink(product.id);
+  const productUrl = getProductLink(product?.id);
   const title = action === 'added' ? '🆕 *New Variant Added!*' : '🔄 *Variant Updated*';
   const variantLine = `• *${variant.size}* / ${variant.color} — stock: ${variant.stock}` +
     (variant.price_adjustment ? ` (${variant.price_adjustment > 0 ? '+' : ''}${variant.price_adjustment} ETB)` : '');
@@ -102,7 +102,7 @@ export async function notifyAdminLowStock(product, variant) {
     `*Product:* [${product.name}](${productUrl})\n` +
     `*Variant:* ${variant.size} / ${variant.color}\n` +
     `*Remaining stock:* ${variant.stock}\n\n` +
-    `Please restock soon.`;
+    `Please restock soon. ${productUrl}`;
 
   if (product.image_url) {
     return await sendPhoto(ADMIN_CHAT_ID, product.image_url, caption, 'Markdown');
@@ -116,7 +116,7 @@ export const sendProductToTelegram = async (product, action = 'created') => {
   if (!BOT_TOKEN || !CHANNEL_ID) return false;
 
   const productUrl = getProductLink(product.id);
-  const message = `🆕 *Product ${action.toUpperCase()}!*\n\n` +
+  const message = `🆕 * ${product.name}!*\n\n` +
     `*📦 Name:* [${product.name}](${productUrl})\n` +
     `*💰 Price:* ETB ${product.base_price}\n` +
     `*🏷️ Category:* ${product.category_name || 'N/A'}\n` +

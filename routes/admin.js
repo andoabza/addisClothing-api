@@ -5,6 +5,8 @@ import PDFDocument from 'pdfkit';
 import { uploadToCloudinary } from '../middleware/upload.js';
 import upload from '../middleware/upload.js';
 import QRCode from 'qrcode';
+import { sendProductToTelegram } from '../services/telegram.js';
+import { notifyVariantAdded, notifyAdminLowStock } from '../services/telegram.js';
 
 const router = express.Router();
 router.use(protect, adminOnly);
@@ -282,16 +284,28 @@ router.post('/products', async (req, res) => {
     [name, description, category_id, base_price, image_url, is_featured || false]
   );
   // Log the creation
+
   await logProductChange(result.insertId, 'create', req.body, req.user.id);
+  await sendProductToTelegram({
+    name,
+    base_price,
+    category_id,
+    description,
+    is_featured,
+    image_url
+  }, 'created').catch(err => console.error('Telegram error:', err));
+  
   res.status(201).json({ id: result.insertId });
 });
 
 router.put('/products/:id', async (req, res) => {
   const { name, description, category_id, base_price, image_url, is_featured } = req.body;
+  const [oldData] = await pool.query('SELECT * FROM products WHERE id = ?', [req.params.id]);
   await pool.query(
     'UPDATE products SET name=?, description=?, category_id=?, base_price=?, image_url=?, is_featured=? WHERE id=?',
     [name, description, category_id, base_price, image_url, is_featured, req.params.id]
   );
+  const newData = { name, description, category_id, base_price, image_url, is_featured };
   await logProductChange(req.params.id, 'update', { before: oldData, after: newData }, req.user.id);
   res.json({ success: true });
   });
@@ -302,13 +316,62 @@ router.delete('/products/:id', async (req, res) => {
 });
 
 // Variant management
+// router.post('/variants', async (req, res) => {
+//   const { product_id, size, color, stock, price_adjustment, sku } = req.body;
+//   await pool.query(
+//     'INSERT INTO variants (product_id, size, color, stock, price_adjustment, sku) VALUES (?, ?, ?, ?, ?, ?)',
+//     [product_id, size, color, stock, price_adjustment, sku]
+//   );
+//   res.status(201).json({ success: true });
+// });
+
+// Add/Update variant
 router.post('/variants', async (req, res) => {
   const { product_id, size, color, stock, price_adjustment, sku } = req.body;
-  await pool.query(
+  // ... insert variant
+  // check if sku exists 
+  const [existing] = await pool.query('SELECT id FROM variants WHERE sku = ?', [sku]);
+  if (existing.length > 0) {
+    return res.status(400).json({ message: 'SKU already exists' });
+  }
+  const [result] = await pool.query(
     'INSERT INTO variants (product_id, size, color, stock, price_adjustment, sku) VALUES (?, ?, ?, ?, ?, ?)',
-    [product_id, size, color, stock, price_adjustment, sku]
+    [product_id, size, color, stock, price_adjustment, sku || null]
   );
-  res.status(201).json({ success: true });
+  
+  // Fetch product details and all variants
+  const [productRows] = await pool.query('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?', [product_id]);
+  const product = productRows[0];
+  const [allVariants] = await pool.query('SELECT size, color, stock, price_adjustment FROM variants WHERE product_id = ?', [product_id]);
+  const newVariant = { id: result.insertId, size, color, stock, price_adjustment };
+  
+  // Notify channel (non-blocking)
+  notifyVariantAdded(product, newVariant, allVariants).catch(console.error);
+  
+  // Alert admin if stock is low (<=3)
+  if (stock <= 3) {
+    notifyAdminLowStock(product, newVariant).catch(console.error);
+  }
+  
+  res.status(201).json({ id: result.insertId });
+});
+
+// Similarly for PUT update – check stock change and alert if stock becomes low
+router.put('/variants/:id', async (req, res) => {
+  const { size, color, stock, price_adjustment, sku } = req.body;
+  // ... update variant
+  const [oldVariant] = await pool.query('SELECT stock, product_id FROM variants WHERE id = ?', [req.params.id]);
+  await pool.query('UPDATE variants SET size=?, color=?, stock=?, price_adjustment=?, sku=? WHERE id=?',
+    [size, color, stock, price_adjustment, sku, req.params.id]);
+  
+  // Notify if stock decreased to <=3
+  if (stock <= 3 && oldVariant[0].stock > 3) {
+    const [productRows] = await pool.query('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?', [oldVariant[0].product_id]);
+    const product = productRows[0];
+    const updatedVariant = { id: req.params.id, size, color, stock, price_adjustment };
+    notifyAdminLowStock(product, updatedVariant).catch(console.error);
+  }
+  res.json({ success: true });
 });
 
 // Order management
@@ -368,14 +431,14 @@ router.post('/variants', async (req, res) => {
 });
 
 // Update variant
-router.put('/variants/:id', async (req, res) => {
-  const { size, color, stock, price_adjustment, sku } = req.body;
-  await pool.query(
-    'UPDATE variants SET size=?, color=?, stock=?, price_adjustment=?, sku=? WHERE id=?',
-    [size, color, stock, price_adjustment, sku, req.params.id]
-  );
-  res.json({ success: true });
-});
+// router.put('/variants/:id', async (req, res) => {
+//   const { size, color, stock, price_adjustment, sku } = req.body;
+//   await pool.query(
+//     'UPDATE variants SET size=?, color=?, stock=?, price_adjustment=?, sku=? WHERE id=?',
+//     [size, color, stock, price_adjustment, sku, req.params.id]
+//   );
+//   res.json({ success: true });
+// });
 
 // Delete variant
 router.delete('/variants/:id', async (req, res) => {
